@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Registrar{% endblock %}
+{% block content %}
+<div class="row justify-content-center align-items-center min-vh-100">
+  <div class="col-md-4">
+    <div class="card shadow">
+      <div class="card-body p-5">
+        <h3 class="text-center mb-4">Criar Conta</h3>
+        <form action="/register" method="post">
+          <div class="mb-3">
+            <input type="text" name="username" class="form-control" placeholder="Usuário" required>
+          </div>
+          <div class="mb-3">
+            <input type="email" name="email" class="form-control" placeholder="E-mail (opcional)">
+          </div>
+          <div class="mb-4">
+            <input type="password" name="password" class="form-control" placeholder="Senha (mín. 6 caracteres)" required>
+          </div>
+          <button class="btn btn-primary w-100">Criar conta</button>
+        </form>
+        <p class="text-center mt-3"><a href="/login">Já tem conta? Entrar</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
