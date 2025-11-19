@@ -4,93 +4,62 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
 from passlib.context import CryptContext
+Context
 from jose import jwt
 from datetime import datetime, timedelta
 import sqlite3
 import os
 
-app = FastAPI(title="Serraria PRO Web")
+app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# Segurança
-SECRET_KEY = os.getenv("SECRET_KEY", "troque-por-uma-chave-forte-aqui-muito-grande-2025")
+# Config
+SECRET_KEY = os.getenv("SECRET_KEY", "mude-esta-chave-para-uma-muito-forte-2025")
 ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Banco de dados
 conn = sqlite3.connect("serraria.db", check_same_thread=False)
 c = conn.cursor()
 
-# Tabelas
-c.execute('''CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, hashed_password TEXT)''')
-c.execute('''CREATE TABLE IF NOT EXISTS toras (id INTEGER PRIMARY KEY, data TEXT, fornecedor TEXT, volume REAL)''')
-c.execute('''CREATE TABLE IF NOT EXISTS vendas (id INTEGER PRIMARY KEY, data TEXT, cliente TEXT, volume REAL, valor REAL)''')
-# ... (adicione as outras tabelas que quiser)
+# Tabelas do sistema
+c.executescript('''
+CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, hashed TEXT);
+CREATE TABLE IF NOT EXISTS toras (id INTEGER PRIMARY KEY, data TEXT, fornecedor TEXT, volume REAL, valor REAL);
+CREATE TABLE IF NOT EXISTS producao (id INTEGER PRIMARY KEY, data TEXT, tora_volume REAL, tabuas REAL, cavaco REAL, po_serra REAL);
+CREATE TABLE IF NOT EXISTS produtos (id INTEGER PRIMARY KEY, nome TEXT, unidade TEXT, estoque REAL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS vendas (id INTEGER PRIMARY KEY, data TEXT, cliente TEXT, itens TEXT, total REAL, status TEXT);
+CREATE TABLE IF NOT EXISTS financeiro (id INTEGER PRIMARY KEY, data TEXT, tipo TEXT, descricao TEXT, valor REAL);
+''')
 conn.commit()
 
-# Criar usuário admin padrão se não existir
-c.execute("SELECT * FROM users WHERE username='admin'")
-if not c.fetchone():
-    hashed = pwd_context.hash("serraria2025")
-    c.execute("INSERT INTO users (username, hashed_password) VALUES (?, ?)", ("admin", hashed))
-    conn.commit()
+# Usuário admin padrão
+c.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0 and c.execute(
+    "INSERT INTO users (username, hashed) VALUES (?, ?)",
+    ("admin", pwd_context.hash("serraria2025"))
+) and conn.commit()
 
-def verify_password(plain, hashed): return pwd_context.verify(plain, hashed)
-def get_password_hash(p): return pwd_context.hash(p)
-def create_token(data: dict): 
-    expire = datetime.utcnow() + timedelta(days=7)
-    return jwt.encode({**data, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
+from utils.auth import get_current_user, create_token, login_page, login_post, register_page, register_post, logout
 
-async def get_current_user(request: Request):
-    token = request.cookies.get("access_token")
-    if not token: raise HTTPException(401)
-    try:
-        payload = jwt.decode(token.replace("Bearer ", ""), SECRET_KEY, algorithms=[ALGORITHM])
-        return payload.get("sub")
-    except:
-        raise HTTPException(401)
+app.add_route("/login", login_page, ["GET"])
+app.add_route("/login", login_post, ["POST"])
+app.add_route("/register", register_page, ["GET"])
+app.add_route("/register", register_post, ["POST"])
+app.add_route("/logout", logout)
 
 @app.get("/", response_class=HTMLResponse)
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
-
-@app.post("/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    c.execute("SELECT username, hashed_password FROM users WHERE username=?", (form_data.username,))
-    user = c.fetchone()
-    if not user or not verify_password(form_data.password, user[1]):
-        raise HTTPException(400, detail="Usuário ou senha incorretos")
-    token = create_token({"sub": user[0]})
-    response = RedirectResponse("/dashboard", status_code=302)
-    response.set_cookie("access_token", f"Bearer {token}", httponly=True, max_age=604800)
-    return response
-
-@app.get("/register", response_class=HTMLResponse)
-async def register_page(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request})
-
-@app.post("/register")
-async def register(username: str = Form(), password: str = Form()):
-    hashed = get_password_hash(password)
-    try:
-        c.execute("INSERT INTO users (username, hashed_password) VALUES (?, ?)", (username, hashed))
-        conn.commit()
-    except:
-        raise HTTPException(400, detail="Usuário já existe")
-    return RedirectResponse("/login", status_code=302)
-
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, user: str = Depends(get_current_user)):
-    return templates.TemplateResponse("index.html", {"request": request, "username": user})
+    return templates.TemplateResponse("dashboard.html", {"request": request, "username": user})
 
-@app.get("/logout")
-def logout():
-    response = RedirectResponse("/login")
-    response.delete_cookie("access_token")
-    return response
+# APIs simples (você pode expandir)
+@app.post("/api/tora")
+async def api_tora(fornecedor: str = Form(), volume: float = Form(), valor: float = Form(), user: str = Depends(get_current_user)):
+    c.execute("INSERT INTO toras (data, fornecedor, volume, valor) VALUES (date('now'), ?, ?, ?)", (fornecedor, volume, valor))
+    c.execute("INSERT INTO financeiro (data, tipo, descricao, valor) VALUES (date('now'), 'pagar', ?, ?)", (f"Compra tora {fornecedor}", -valor))
+    conn.commit()
+    return {"status": "ok"}
 
-# API de exemplo (você pode adicionar todas as outras)
-@app.get("/api/estoque")
-async def estoque(user
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000)
