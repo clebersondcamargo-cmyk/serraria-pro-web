@@ -4,7 +4,6 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
 from passlib.context import CryptContext
-Context
 from jose import jwt
 from datetime import datetime, timedelta
 import sqlite3
