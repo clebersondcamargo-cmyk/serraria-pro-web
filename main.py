@@ -14,7 +14,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # Config
-SECRET_KEY = os.getenv("SECRET_KEY", "mude-esta-chave-para-uma-muito-forte-2025")
+SECRET_KEY = os.getenv("SECRET_KEY", "troque-agora")
 ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
