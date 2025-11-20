@@ -115,4 +115,4 @@ from utils.auth import (
 app.add_route("/login", login_page, ["GET"])
 app.add_route("/login", login_post, ["POST"])
 app.add_route("/register", register_page, ["GET"])
-app.add_route("/register", register_p)
+app.add_route("/register", register_page)
