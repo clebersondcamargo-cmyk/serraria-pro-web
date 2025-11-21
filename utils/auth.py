@@ -1,51 +1,25 @@
 from fastapi import Request, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi.templating import Jinja2Templates
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
-from passlib.context import CryptContext
-import sqlite3
+
+from main import templates, c, conn, pwd_context, SECRET_KEY, ALGORITHM
 
 
 # ============================================================
-#  CONFIGURAÇÕES GERAIS
+#   GERAR TOKEN
 # ============================================================
-
-SECRET_KEY = "your-secret-here"
-ALGORITHM = "HS256"
-
-# Templates (Render exige caminho absoluto/relativo válido)
-templates = Jinja2Templates(directory="templates")
-
-# Banco de dados
-conn = sqlite3.connect("database.db", check_same_thread=False)
-c = conn.cursor()
-
-# Hash de senha
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-# ============================================================
-#  GERADOR DE TOKEN
-# ============================================================
-
 def create_token(data: dict):
-    """Gera token JWT com expiração de 7 dias."""
     to_encode = data.copy()
     to_encode["exp"] = datetime.utcnow() + timedelta(days=7)
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 # ============================================================
-#  OBTÉM USUÁRIO PELO COOKIE
+#   OBTER USUÁRIO
 # ============================================================
-
 async def get_current_user(request: Request):
-    """
-    Retorna o usuário logado ou None.
-    Não quebra a aplicação se o token estiver ausente.
-    """
     token = request.cookies.get("token")
 
     if not token:
@@ -59,8 +33,32 @@ async def get_current_user(request: Request):
 
 
 # ============================================================
-#  PÁGINA DE LOGIN
+#   LOGIN PAGE
 # ============================================================
-
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
+
+
+# ============================================================
+#   LOGIN POST
+# ============================================================
+async def login_post(form: OAuth2PasswordRequestForm = Depends()):
+    c.execute("SELECT username, hashed FROM users WHERE username=?", (form.username,))
+    user = c.fetchone()
+
+    if user and pwd_context.verify(form.password, user[1]):
+        response = RedirectResponse("/dashboard", status_code=302)
+        token = create_token({"sub": user[0]})
+        response.set_cookie("token", token, httponly=True)
+        return response
+
+    raise HTTPException(status_code=400, detail="Credenciais inválidas")
+
+
+# ============================================================
+#   LOGOUT
+# ============================================================
+def logout(request: Request):
+    response = RedirectResponse("/login", status_code=302)
+    response.delete_cookie("token")
+    return response
