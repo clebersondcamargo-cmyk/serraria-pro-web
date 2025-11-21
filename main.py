@@ -1,11 +1,8 @@
-from fastapi import FastAPI, Form, Request, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, Request, Depends
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.security import OAuth2PasswordRequestForm
 from passlib.context import CryptContext
-from jose import jwt
-from datetime import datetime, timedelta
 import sqlite3
 import os
 
@@ -22,7 +19,6 @@ templates = Jinja2Templates(directory="templates")
 SECRET_KEY = os.getenv("SECRET_KEY", "troque-agora")
 ALGORITHM = "HS256"
 
-# FIX: Passlib + bcrypt compatível com Render
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto"
@@ -88,7 +84,6 @@ conn.commit()
 # ------------------------------
 # ADMIN DEFAULT
 # ------------------------------
-# FIX: bcrypt > 72 bytes bug na versão nova
 admin_exists = c.execute("SELECT COUNT(*) FROM users").fetchone()[0]
 
 if admin_exists == 0:
@@ -104,15 +99,32 @@ if admin_exists == 0:
 # ------------------------------
 from utils.auth import (
     get_current_user,
-    create_token,
     login_page,
     login_post,
-    register_page,
-    register_post,
     logout
 )
 
-app.add_route("/login", login_page, ["GET"])
-app.add_route("/login", login_post, ["POST"])
-app.add_route("/register", register_page, ["GET"])
-app.add_route("/register", register_page)
+# LOGIN
+app.add_route("/login", login_page, methods=["GET"])
+app.add_route("/login", login_post, methods=["POST"])
+
+# LOGOUT
+app.add_route("/logout", logout, methods=["GET"])
+
+
+# ------------------------------
+# ÁREA PROTEGIDA
+# ------------------------------
+@app.get("/", include_in_schema=False)
+async def root(request: Request, user: str = Depends(get_current_user)):
+    if not user:
+        return RedirectResponse("/login")
+    return RedirectResponse("/dashboard")
+
+
+@app.get("/dashboard")
+async def dashboard(request: Request, user: str = Depends(get_current_user)):
+    if not user:
+        return RedirectResponse("/login")
+
+    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
