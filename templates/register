@@ -1,26 +1,29 @@
 {% extends "base.html" %}
-{% block title %}Registrar{% endblock %}
 {% block content %}
-<div class="row justify-content-center align-items-center min-vh-100">
-  <div class="col-md-4">
-    <div class="card shadow">
-      <div class="card-body p-5">
+
+<div class="row justify-content-center">
+  <div class="col-md-5">
+
+    <div class="card shadow-lg">
+      <div class="card-body">
         <h3 class="text-center mb-4">Criar Conta</h3>
-        <form action="/register" method="post">
-          <div class="mb-3">
-            <input type="text" name="username" class="form-control" placeholder="Usuário" required>
-          </div>
-          <div class="mb-3">
-            <input type="email" name="email" class="form-control" placeholder="E-mail (opcional)">
-          </div>
-          <div class="mb-4">
-            <input type="password" name="password" class="form-control" placeholder="Senha (mín. 6 caracteres)" required>
-          </div>
-          <button class="btn btn-primary w-100">Criar conta</button>
+
+        <form method="POST">
+          <input class="form-control mb-3" name="username" placeholder="Usuário" required>
+          <input class="form-control mb-3" name="email" type="email" placeholder="E-mail" required>
+          <input class="form-control mb-3" name="password" type="password" placeholder="Senha" required>
+
+          <button class="btn btn-success w-100">Registrar</button>
         </form>
-        <p class="text-center mt-3"><a href="/login">Já tem conta? Entrar</a></p>
+
+        <div class="text-center mt-3">
+          <a href="{{ url_for('login') }}">Já tenho conta</a>
+        </div>
+
       </div>
     </div>
+
   </div>
 </div>
+
 {% endblock %}
