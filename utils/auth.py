@@ -1,64 +1,25 @@
-from fastapi import Request, Depends, HTTPException
-from fastapi.responses import RedirectResponse
-from fastapi.security import OAuth2PasswordRequestForm
-from jose import jwt, JWTError
-from datetime import datetime, timedelta
+from flask_login import UserMixin
+from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
 
-from main import templates, c, conn, pwd_context, SECRET_KEY, ALGORITHM
+db = SQLAlchemy()
+bcrypt = Bcrypt()
 
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(255), nullable=False)
 
-# ============================================================
-#   GERAR TOKEN
-# ============================================================
-def create_token(data: dict):
-    to_encode = data.copy()
-    to_encode["exp"] = datetime.utcnow() + timedelta(days=7)
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    def verify_password(self, pwd):
+        return bcrypt.check_password_hash(self.password, pwd)
 
+def create_user(username, email, password):
+    hashed = bcrypt.generate_password_hash(password).decode("utf-8")
+    user = User(username=username, email=email, password=hashed)
+    db.session.add(user)
+    db.session.commit()
+    return user
 
-# ============================================================
-#   OBTER USUÁRIO
-# ============================================================
-async def get_current_user(request: Request):
-    token = request.cookies.get("token")
-
-    if not token:
-        return None
-
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload.get("sub")
-    except JWTError:
-        return None
-
-
-# ============================================================
-#   LOGIN PAGE
-# ============================================================
-def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
-
-
-# ============================================================
-#   LOGIN POST
-# ============================================================
-async def login_post(form: OAuth2PasswordRequestForm = Depends()):
-    c.execute("SELECT username, hashed FROM users WHERE username=?", (form.username,))
-    user = c.fetchone()
-
-    if user and pwd_context.verify(form.password, user[1]):
-        response = RedirectResponse("/dashboard", status_code=302)
-        token = create_token({"sub": user[0]})
-        response.set_cookie("token", token, httponly=True)
-        return response
-
-    raise HTTPException(status_code=400, detail="Credenciais inválidas")
-
-
-# ============================================================
-#   LOGOUT
-# ============================================================
-def logout(request: Request):
-    response = RedirectResponse("/login", status_code=302)
-    response.delete_cookie("token")
-    return response
+def find_user(username):
+    return User.query.filter_by(username=username).first()
