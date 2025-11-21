@@ -65,3 +65,4 @@ async def login_post(form: OAuth2PasswordRequestForm = Depends()):
             "token",
             token,
             httponly=True,
+        )
