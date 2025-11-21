@@ -1,48 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
 {% block content %}
-<h2 class="mb-4">Dashboard – Serraria de Pinus</h2>
 
-<div class="row g-4">
-  <div class="col-md-6">
-    <div class="card h-100">
-      <div class="card-header bg-primary text-white">Entrada de Toras (m³) – Últimos 30 dias</div>
-      <div class="card-body">
-        <canvas id="chartToras"></canvas>
-      </div>
-    </div>
-  </div>
+<h2>Bem-vindo, {{ user.username }}!</h2>
 
-  <div class="col-md-6">
-    <div class="card h-100">
-      <div class="card-header bg-success text-white">Produção de Tábuas + Subprodutos</div>
-      <div class="card-body">
-        <canvas id="chartProducao"></canvas>
-      </div>
-    </div>
-  </div>
+<p class="lead">Você está logado no painel.</p>
 
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header bg-info text-white">Fluxo de Caixa</div>
-      <div class="card-body">
-        <canvas id="chartCaixa"></canvas>
-      </div>
-    </div>
-  </div>
-</div>
-{% endblock %}
+<a href="{{ url_for('logout') }}" class="btn btn-danger mt-3">Sair</a>
 
-{% block scripts %}
-<script>
-async function loadCharts() {
-  const res = await fetch('/api/dashboard-data');
-  const data = await res.json();
-
-  new Chart(document.getElementById('chartToras'), { type: 'line', data: data.toras });
-  new Chart(document.getElementById('chartProducao'), { type: 'bar', data: data.producao });
-  new Chart(document.getElementById('chartCaixa'), { type: 'line', data: data.caixa });
-}
-loadCharts();
-</script>
 {% endblock %}
