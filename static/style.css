@@ -1,3 +1,21 @@
+/* minimal dark theme support via [data-theme="dark"] */
+:root {
+  --bg: #ffffff;
+  --text: #212529;
+  --card: #ffffff;
+}
+[data-theme="dark"] {
+  --bg: #121212;
+  --text: #e8e6e3;
+  --card: #1e1e1e;
+}
+
 body {
-    transition: background 0.4s, color 0.4s;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.card, .navbar, .card-body {
+  background: var(--card) !important;
+  color: var(--text) !important;
 }
