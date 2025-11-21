@@ -1,19 +1,35 @@
 from fastapi import Request, Depends, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.templating import Jinja2Templates
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
+from passlib.context import CryptContext
+import sqlite3
 
-from . import templates, c, conn, pwd_context  
 
-# ===== CONFIGURAÇÕES DO JWT =====
+# ============================================================
+#  CONFIGURAÇÕES GERAIS
+# ============================================================
+
 SECRET_KEY = "your-secret-here"
 ALGORITHM = "HS256"
 
+# Templates (Render exige caminho absoluto/relativo válido)
+templates = Jinja2Templates(directory="templates")
+
+# Banco de dados
+conn = sqlite3.connect("database.db", check_same_thread=False)
+c = conn.cursor()
+
+# Hash de senha
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 # ============================================================
-#   GERADOR DE TOKEN
+#  GERADOR DE TOKEN
 # ============================================================
+
 def create_token(data: dict):
     """Gera token JWT com expiração de 7 dias."""
     to_encode = data.copy()
@@ -22,12 +38,13 @@ def create_token(data: dict):
 
 
 # ============================================================
-#   OBTÉM USUÁRIO A PARTIR DO COOKIE
+#  OBTÉM USUÁRIO PELO COOKIE
 # ============================================================
+
 async def get_current_user(request: Request):
     """
-    Caso o usuário não esteja logado, retorna None
-    — permitindo que a rota redirecione para /login.
+    Retorna o usuário logado ou None.
+    Não quebra a aplicação se o token estiver ausente.
     """
     token = request.cookies.get("token")
 
@@ -42,27 +59,8 @@ async def get_current_user(request: Request):
 
 
 # ============================================================
-#   PÁGINA DE LOGIN
+#  PÁGINA DE LOGIN
 # ============================================================
+
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
-
-
-# ============================================================
-#   LOGIN (POST)
-# ============================================================
-async def login_post(form: OAuth2PasswordRequestForm = Depends()):
-    """
-    Processa login, valida senha e cria cookie com token JWT.
-    """
-    c.execute("SELECT username, hashed FROM users WHERE username=?", (form.username,))
-    user = c.fetchone()
-
-    if user and pwd_context.verify(form.password, user[1]):
-        response = RedirectResponse("/dashboard", status_code=302)
-        token = create_token({"sub": user[0]})
-        response.set_cookie(
-            "token",
-            token,
-            httponly=True,
-        )
