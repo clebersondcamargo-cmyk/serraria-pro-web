@@ -1,2 +1,3 @@
-body { background: linear-gradient(135deg, #f0f8f0, #d0e0d0); }
-.card { border-radius: 15px; }
+body {
+    transition: background 0.4s, color 0.4s;
+}
