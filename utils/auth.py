@@ -1,25 +1,23 @@
-from flask_login import UserMixin
-from flask_sqlalchemy import SQLAlchemy
-from flask_bcrypt import Bcrypt
+# utils/auth.py
+from fastapi import Request
+from jose import jwt, JWTError
+from datetime import datetime, timedelta
+import os
 
-db = SQLAlchemy()
-bcrypt = Bcrypt()
+SECRET_KEY = os.getenv("SECRET_KEY", "troque-agora-por-uma-chave-secreta")
+ALGORITHM = "HS256"
 
-class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True, nullable=False)
-    email = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(255), nullable=False)
+def create_token(data: dict):
+    to_encode = data.copy()
+    to_encode["exp"] = datetime.utcnow() + timedelta(days=7)
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-    def verify_password(self, pwd):
-        return bcrypt.check_password_hash(self.password, pwd)
-
-def create_user(username, email, password):
-    hashed = bcrypt.generate_password_hash(password).decode("utf-8")
-    user = User(username=username, email=email, password=hashed)
-    db.session.add(user)
-    db.session.commit()
-    return user
-
-def find_user(username):
-    return User.query.filter_by(username=username).first()
+def get_current_user(request: Request):
+    token = request.cookies.get("token")
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("sub")
+    except JWTError:
+        return None
