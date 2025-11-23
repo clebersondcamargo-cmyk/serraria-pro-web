@@ -1,37 +1,56 @@
-<!DOCTYPE html>
-<html lang="pt-BR" data-bs-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ title if title else "Sistema" }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body class="bg-body-secondary">
+<!doctype html>
+<html lang="pt-br" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Serraria Pro</title>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
-    <a class="navbar-brand" href="#">Serraria Pro Web</a>
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/static/style.css" rel="stylesheet" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light" id="main-nav">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">Serraria Pro</a>
+        <div class="d-flex align-items-center">
+          <div class="form-check form-switch me-3">
+            <input class="form-check-input" type="checkbox" id="themeToggle">
+            <label class="form-check-label" for="themeToggle">Dark</label>
+          </div>
+        </div>
+      </div>
+    </nav>
 
-    <button class="btn btn-outline-light ms-auto" onclick="toggleTheme()">🌓 Tema</button>
-</nav>
+    <main class="container my-4">
+      {% block content %}{% endblock %}
+    </main>
 
-<div class="container py-4">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, msg in messages %}
-          <div class="alert alert-{{ category }}">{{ msg }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    {% block content %}{% endblock %}
-</div>
-
-<script>
-function toggleTheme() {
-    const html = document.documentElement;
-    html.dataset.bsTheme = html.dataset.bsTheme === "light" ? "dark" : "light";
-}
-</script>
-
-</body>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // tema persistente
+      const toggle = document.getElementById('themeToggle');
+      function applyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        // ajustar navbar
+        const nav = document.getElementById('main-nav');
+        if (t === 'dark') {
+          nav.classList.remove('navbar-light', 'bg-light');
+          nav.classList.add('navbar-dark', 'bg-dark');
+          toggle.checked = true;
+        } else {
+          nav.classList.remove('navbar-dark', 'bg-dark');
+          nav.classList.add('navbar-light', 'bg-light');
+          toggle.checked = false;
+        }
+      }
+      const saved = localStorage.getItem('theme') || 'light';
+      applyTheme(saved);
+      toggle && toggle.addEventListener('change', (e) => {
+        const theme = e.target.checked ? 'dark' : 'light';
+        localStorage.setItem('theme', theme);
+        applyTheme(theme);
+      });
+    </script>
+  </body>
 </html>
