@@ -1,100 +1,73 @@
-import os
-from flask_sqlalchemy import SQLAlchemy
-
-app = Flask(__name__)
-
-db_url = os.getenv("DATABASE_URL")
-
-# Ajuste necessário para Render/Postgres
-if db_url and db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url or "sqlite:///local.db"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db = SQLAlchemy(app)
-
-from flask import Flask, render_template, redirect, request, url_for, flash
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from config import Config
-from utils.auth import db, bcrypt, User, create_user, find_user
-
-app = Flask(__name__)
-app.config.from_object(Config)
-
-db.init_app(app)
-bcrypt.init_app(app)
-
-login_manager = LoginManager()
-login_manager.login_view = "login"
-login_manager.init_app(app)
-
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+# -------------------------
+@app.route('/')
+def index():
+return render_template('index.html')
 
 
-@app.before_first_request
-def init_db():
-    db.create_all()
+# -------- Protocolos --------
+@app.route('/protocolos')
+def protocolos():
+conn = db()
+protocolos = conn.execute('SELECT * FROM protocolos ORDER BY id DESC').fetchall()
+return render_template('protocolos.html', protocolos=protocolos)
 
 
-# ======================
-#       ROTAS
-# ======================
-
-@app.route("/")
-def home():
-    if current_user.is_authenticated:
-        return redirect(url_for("dashboard"))
-    return redirect(url_for("login"))
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        username = request.form.get("username")
-        pwd = request.form.get("password")
-
-        user = find_user(username)
-        if user and user.verify_password(pwd):
-            login_user(user)
-            return redirect(url_for("dashboard"))
-        else:
-            flash("Usuário ou senha inválidos.", "danger")
-
-    return render_template("login.html")
+@app.route('/protocolo/novo', methods=['GET','POST'])
+def protocolo_novo():
+if request.method == 'POST':
+conn = db()
+conn.execute("""
+INSERT INTO protocolos (data, solicitante, endereco, tipo_servico, descricao, status)
+VALUES (?, ?, ?, ?, ?, ?)
+""", (data, solicitante, endereco, tipo_servico, descricao, status)) VALUES (?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?)', (
+str(datetime.datetime.now()),
+request.form['solicitante'],
+request.form['endereco'],
+request.form['tipo_servico'],
+request.form['descricao'],
+'Aberto'
+))
+conn.commit()
+return redirect(url_for('protocolos'))
+return render_template('protocolo_form.html')
 
 
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if request.method == "POST":
-        username = request.form.get("username")
-        email = request.form.get("email")
-        pwd = request.form.get("password")
-
-        if find_user(username):
-            flash("Usuário já existe!", "danger")
-        else:
-            create_user(username, email, pwd)
-            flash("Conta criada com sucesso! Faça login.", "success")
-            return redirect(url_for("login"))
-
-    return render_template("register.html")
+# -------- Projetos --------
+@app.route('/projetos')
+def projetos():
+conn = db()
+projetos = conn.execute('SELECT * FROM projetos ORDER BY id DESC').fetchall()
+return render_template('projetos.html', projetos=projetos)
 
 
-@app.route("/dashboard")
-@login_required
-def dashboard():
-    return render_template("dashboard.html", user=current_user)
+@app.route('/projeto/novo', methods=['GET','POST'])
+def projeto_novo():
+if request.method == 'POST':
+conn = db()
+conn.execute('INSERT INTO projetos (nome, descricao, responsavel, status, inicio, fim)
+VALUES (?, ?, ?, ?, ?, ?)', (
+request.form['nome'],
+request.form['descricao'],
+request.form['responsavel'],
+request.form['status'],
+request.form['inicio'],
+request.form['fim']
+))
+conn.commit()
+return redirect(url_for('projetos'))
+return render_template('projeto_form.html')
 
 
-@app.route("/logout")
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for("login"))
+# -------- Uploads --------
+@app.route('/upload', methods=['POST'])
+def upload():
+file = request.files['arquivo']
+filename = secure_filename(file.filename)
+file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+return 'OK'
 
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+app.run(host='0.0.0.0', port=5000)
