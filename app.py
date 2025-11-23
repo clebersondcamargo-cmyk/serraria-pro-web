@@ -1,3 +1,19 @@
+import os
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+
+db_url = os.getenv("DATABASE_URL")
+
+# Ajuste necessário para Render/Postgres
+if db_url and db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url or "sqlite:///local.db"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
 from flask import Flask, render_template, redirect, request, url_for, flash
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from config import Config
